@@ -66,32 +66,34 @@ textarea{min-height:90px;resize:vertical}
   margin:.25rem 0 .5rem;
 }
 
-.quiz-grid{
-  display:grid;
-  grid-template-columns:repeat(3, 1fr);
-  gap:8px;
+.quiz-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  width: 100%;
 }
-.quiz-tile{
-  background:#1c1f2a;
-  border:1px solid #2c3342;
-  border-radius:10px;
-  padding:10px;
-  min-height:90px;
-  cursor:pointer;
-  transition:transform .12s ease, background .12s ease, border-color .12s ease;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
+.quiz-tile {
+  background: #1c1f2a;
+  border: 1px solid #2c3342;
+  border-radius: 10px;
+  padding: 10px;
+  min-height: 90px;
+  cursor: pointer;
+  display: flex;
+  align-items: end;   /* заголовок внизу, как карточка */
+  justify-content: center;
+  text-align: center;
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+  position: relative;
 }
-.quiz-tile:hover{
-  transform:scale(1.02);
-  background:#23283b;
-  border-color:#39425a;
+.quiz-tile:hover {
+  transform: scale(1.02);
+  background: #23283b;
+  border-color: #39425a;
 }
 .quiz-tile-title{
-  font-weight:600;
-  line-height:1.2;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .icon-btn{
@@ -283,4 +285,40 @@ textarea{min-height:90px;resize:vertical}
 }
 .option input[type="radio"] {
   transform: scale(1.1);
+}
+
+.tabbar {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr); /* <-- 5 равных колонок */
+  align-items: center;
+  justify-items: center;
+  background: #1a1d2a;
+  padding: 8px 0;
+  border-top: 1px solid #2c3342;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.tab {
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: color 0.15s, transform 0.15s;
+}
+
+.tab:hover {
+  color: #fff;
+  transform: scale(1.1);
+}
+
+.tab.active {
+  color: #4da3ff;
+}
+
+.tab.big {
+  font-size: 1.9rem;
 }

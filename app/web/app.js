@@ -170,6 +170,7 @@ tabs.forEach(btn => {
       if (tab === "home")    await renderHome();
       if (tab === "search")  await renderSearch();
       if (tab === "create")  await renderCreate();
+      if (tab === "random")  await renderRandom();
       if (tab === "profile") await renderProfile();
     } catch (e) {
       console.error(`[Tab ${tab}] render error:`, e);
@@ -248,26 +249,25 @@ async function renderSearch() {
     const filtered = q
       ? all.filter(x => (x.title||"").toLowerCase().includes(q) || (x.description||"").toLowerCase().includes(q))
       : all;
+
     if (!filtered.length) {
       list.innerHTML = `<div class="muted">Ничего не найдено</div>`;
       return;
     }
-    filtered.forEach(x=>{
-      const item = document.createElement("div");
-      item.className = "mini-card";
-      item.innerHTML = `
-        <h4>${escapeHtml(x.title)}</h4>
-        <div class="muted">${escapeHtml(x.description||"")}</div>
-        <button data-open>Открыть</button>
+
+    filtered.forEach(x => {
+      const btn = document.createElement("button");
+      btn.className = "quiz-tile";
+      btn.title = x.title || "";
+      btn.innerHTML = `
+        <div class="quiz-tile-title">${escapeHtml(x.title)}</div>
       `;
-      item.querySelector("[data-open]").onclick = ()=>{
-          openQuiz(x.id);
-        };
-      list.appendChild(item);
+      btn.addEventListener("click", () => openQuiz(x.id));
+      list.appendChild(btn);
     });
   }
 
-  form.addEventListener("input", ()=>{
+  form.addEventListener("input", () => {
     const val = new FormData(form).get("q") || "";
     render(String(val));
   });
@@ -275,6 +275,7 @@ async function renderSearch() {
   render();
   setScreen(node);
 }
+
 
 // CREATE (новый квиз)
 async function renderCreate() {
@@ -530,6 +531,65 @@ async function openQuiz(quizId) {
     } finally {
       submit.disabled = false;
     }
+  });
+
+  setScreen(node);
+}
+
+async function renderRandom() {
+  // простой клиентский рандом: запрашиваем все, выбираем случайный
+  let all = [];
+  try {
+    all = await api("/api/v1/quizzes/");
+  } catch (e) {
+    setScreen(document.createTextNode("Не удалось загрузить список квизов"));
+    return;
+  }
+
+  if (!all.length) {
+    const wrap = document.createElement("div");
+    wrap.className = "vstack gap";
+    wrap.innerHTML = `<h2>Случайный квиз</h2><div class="muted">Пока нет квизов</div>`;
+    setScreen(wrap);
+    return;
+  }
+
+  const pick = () => all[Math.floor(Math.random() * all.length)];
+
+  const node = document.createElement("div");
+  node.className = "vstack gap";
+  node.innerHTML = `
+    <div class="row space-between">
+      <h2>Случайный квиз</h2>
+      <div class="row gap">
+        <button id="randomRefresh" class="icon-btn" title="Другой">↻</button>
+      </div>
+    </div>
+    <div id="randomCard" class="card"></div>
+    <div class="row gap">
+      <button class="primary" id="randomStart">Начать</button>
+    </div>
+  `;
+
+  let current = pick();
+
+  const randomCard = node.querySelector("#randomCard");
+  const renderCard = () => {
+    randomCard.innerHTML = `
+      <h3>${escapeHtml(current.title)}</h3>
+      <p class="muted">${escapeHtml(current.description || "")}</p>
+    `;
+  };
+
+  renderCard();
+
+  node.querySelector("#randomRefresh").addEventListener("click", () => {
+    current = pick();
+    renderCard();
+  });
+
+  node.querySelector("#randomStart").addEventListener("click", () => {
+    openQuiz(current.id);
   });
 
   setScreen(node);
