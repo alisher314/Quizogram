@@ -499,3 +499,45 @@ textarea{min-height:90px;resize:vertical}
 
 .like-btn { filter: drop-shadow(0 0 2px rgba(255,0,0,.35)); }
 .open-btn { filter: drop-shadow(0 0 2px rgba(0,170,255,.35)); }
+
+/* Экран результата */
+.result-wrap {
+  display: grid;
+  place-items: center;
+  min-height: calc(100dvh - 120px); /* с учётом таббара и топбара */
+  padding: 16px;
+}
+
+.result-card {
+  width: min(560px, 92vw);
+  background: #1f2430;
+  border: 1px solid #2c3342;
+  border-radius: 16px;
+  padding: 18px 16px 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  text-align: center;
+}
+
+.result-badge {
+  display: inline-block;
+  font-weight: 800;
+  font-size: 1.6rem;
+  background: linear-gradient(135deg, #3fa7ff, #7affe1);
+  color: #0e1220;
+  padding: 8px 14px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+
+.actions-center {
+  justify-content: center;
+}
+
+button.ghost {
+  background: transparent;
+  border: 1px solid #2c3342;
+  color: #d7deff;
+}
+button.ghost:hover {
+  background: #23283b;
+}

@@ -664,6 +664,37 @@ function confettiBurst(times = 240) {
   frame();
 }
 
+function renderQuizResult(quiz, result) {
+  const node = document.createElement("div");
+  node.className = "result-wrap";
+  node.innerHTML = `
+    <div class="result-card">
+      <div class="result-badge">${result.score}/${result.total}</div>
+      <h2>${escapeHtml(quiz.title || "Результат")}</h2>
+      <p class="muted">${result.score === result.total
+        ? "Идеально! Так держать 💪"
+        : result.score === 0
+        ? "Не расстраивайся — попробуй ещё раз! 💫"
+        : "Неплохо! Попробуешь улучшить результат? 🎯"}</p>
+      <div class="row gap actions-center">
+        <button class="primary" id="resRetry">Сыграть ещё раз</button>
+        <button class="ghost"   id="resHome">В ленту</button>
+        <button class="ghost"   id="resProfile">Профиль</button>
+      </div>
+    </div>
+  `;
+  // лёгкий эффект при идеале — конфетти и чутка звука
+  if (Number(result.score) === Number(result.total)) {
+    confettiBurst(200);
+    playCorrect();
+  }
+  setScreen(node);
+
+  node.querySelector("#resRetry").onclick   = () => openQuiz(quiz.id);
+  node.querySelector("#resHome").onclick    = () => renderHome();
+  node.querySelector("#resProfile").onclick = () => renderProfile();
+}
+
 
 async function openQuiz(quizId) {
   const tpl = document.getElementById("tpl-quiz");
@@ -787,13 +818,7 @@ async function openQuiz(quizId) {
             });
 
             // финальный эффект (по желанию)
-            if (Number(res.score) === Number(res.total)) {
-              confettiBurst(240);
-              playCorrect();
-            }
-            alert(`Итог: ${res.score}/${res.total}`);
-            if (activeTab === "profile") renderProfile();
-            else renderHome();
+            renderQuizResult(quiz, res);
           } catch (err) {
             console.error(err);
             alert("Не удалось завершить попытку");
