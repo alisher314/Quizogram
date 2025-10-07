@@ -101,3 +101,7 @@ class FeedItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+class QuizUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = None
