@@ -3,43 +3,79 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Регистрация — Quizogram</title>
+  <title>Quizogram — Регистрация</title>
   <link rel="stylesheet" href="./styles.css"/>
+  <style>
+    body { display: grid; place-items: center; min-height: 100dvh; }
+    .card { width: min(420px, 92vw); }
+  </style>
 </head>
-<body class="login-screen">
-  <div class="login-card">
-    <h1 class="brand">Регистрация</h1>
-    <form id="registerForm" class="vstack">
+<body>
+  <div class="card vstack gap">
+    <h1 class="brand" style="text-align:center;">Quizogram</h1>
+    <form id="regForm" class="vstack gap">
       <input name="username" placeholder="Имя пользователя" required />
-      <input name="email" type="email" placeholder="Email" required />
+      <input name="email" type="email" placeholder="E-mail" required />
       <input name="password" type="password" placeholder="Пароль" required />
-      <button class="primary">Создать аккаунт</button>
+      <button class="primary">Зарегистрироваться</button>
     </form>
-    <p class="muted small">Уже есть аккаунт? Закройте это окно и войдите.</p>
-    <p id="msg" class="muted small"></p>
+    <p class="muted small" style="text-align:center">
+      Уже есть аккаунт? <a href="./" rel="opener">Войти</a>
+    </p>
   </div>
 
   <script>
-    const API = location.origin;
-    async function api(path, {method="GET", data}={}) {
-      const headers = {"Content-Type":"application/json"};
-      const res = await fetch(API+path, {method, headers, body: data?JSON.stringify(data):undefined});
-      if(!res.ok){ throw new Error(await res.text()); }
-      return res.json();
-    }
-    const form = document.getElementById("registerForm");
-    const msg = document.getElementById("msg");
-    form.onsubmit = async (e)=>{
-      e.preventDefault();
-      msg.textContent = "";
-      const payload = Object.fromEntries(new FormData(form));
-      try{
-        await api("/api/v1/auth/register",{method:"POST", data:payload});
-        msg.textContent = "Готово! Теперь вернитесь на вкладку входа и войдите.";
-      }catch(err){
-        msg.textContent = "Ошибка: " + err.message;
+    async function api(url, { method="GET", data, form } = {}) {
+      const headers = {};
+      let body;
+
+      if (form instanceof URLSearchParams) {
+        headers["Content-Type"] = "application/x-www-form-urlencoded";
+        body = form;
+      } else if (form instanceof FormData) {
+        headers["Content-Type"] = "application/json";
+        body = JSON.stringify(Object.fromEntries(form.entries()));
+      } else if (data != null) {
+        headers["Content-Type"] = "application/json";
+        body = JSON.stringify(data);
       }
-    };
+
+      const res = await fetch(url, { method, headers, body });
+      if (!res.ok) throw new Error(await res.text().catch(()=>`HTTP ${res.status}`));
+      const ct = res.headers.get("content-type") || "";
+      if (!ct.includes("application/json")) return await res.text().catch(()=>null);
+      const txt = await res.text();
+      return txt ? JSON.parse(txt) : null;
+    }
+
+    const form = document.getElementById("regForm");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const username = fd.get("username");
+      const password = fd.get("password");
+      const email    = fd.get("email");
+
+      try {
+        // 1) регистрация
+        await api("/api/v1/auth/register", { method: "POST", form: fd });
+
+        // 2) мгновенный логин (OAuth2PasswordRequestForm → urlencoded)
+        const loginForm = new URLSearchParams();
+        loginForm.set("username", username);
+        loginForm.set("password", password);
+        const login = await api("/api/v1/auth/login", { method: "POST", form: loginForm });
+
+        // 3) сохраняем токен так же, как делает основное приложение
+        localStorage.setItem("quizogram_token", login.access_token);
+
+        // 4) переходим в SPA (главная лента)
+        location.href = "./";
+      } catch (err) {
+        console.error(err);
+        alert("Не удалось зарегистрироваться/войти. Возможно, имя уже занято?");
+      }
+    });
   </script>
 </body>
 </html>
