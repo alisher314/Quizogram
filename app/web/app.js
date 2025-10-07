@@ -63,36 +63,52 @@ function setActiveTab(name) {
   tabs.forEach(b => b.classList.toggle("active", b.getAttribute("data-tab") === name));
 }
 
-async function api(path, {method="GET", data, form, auth=true} = {}) {
-  const url = `${API}${path}`;
-  const headers = {};
+async function api(url, { method = "GET", data, form, headers } = {}) {
+  const bearer = localStorage.getItem("quizogram_token") || localStorage.getItem("token");
+  const initHeaders = {
+    ...(headers || {}),
+    ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
+  };
+
   let body;
 
-  if (form) {
-    body = new URLSearchParams(form);
-    headers["Content-Type"] = "application/x-www-form-urlencoded";
-  } else if (data) {
+  // поддержка форм для OAuth2PasswordRequestForm
+  if (form instanceof URLSearchParams) {
+    initHeaders["Content-Type"] = "application/x-www-form-urlencoded";
+    body = form;
+  } else if (form instanceof FormData) {
+    initHeaders["Content-Type"] = "application/x-www-form-urlencoded";
+    body = new URLSearchParams([...form.entries()]);
+  } else if (data != null) {
+    initHeaders["Content-Type"] = "application/json";
     body = JSON.stringify(data);
-    headers["Content-Type"] = "application/json";
   }
-  if (auth && token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(url, { method, headers, body });
-  if (!res.ok) {
-    let msg = await res.text().catch(()=>res.statusText);
-    if (res.status === 401) {
-      console.warn("[API] 401 → drop token & show login");
-      localStorage.removeItem("quizogram_token");
-      token = "";
-      alert("Сессия истекла. Войдите заново.");
-      showLogin();
-      return Promise.reject(new Error("401 Unauthorized"));
-    }
-    throw new Error(`${res.status} ${res.statusText}: ${msg}`);
+  const res = await fetch(url, { method, headers: initHeaders, body });
+
+  if (res.status === 401) {
+    localStorage.removeItem("quizogram_token");
+    try { showLogin(); } catch {}
+    throw new Error('{"detail":"Not authenticated"}');
   }
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(errText || `HTTP ${res.status}`);
+  }
+
+  if (res.status === 204) return null;
   const ct = res.headers.get("content-type") || "";
-  return ct.includes("application/json") ? res.json() : res.text();
+  if (!ct.includes("application/json")) {
+    const txt = await res.text().catch(() => "");
+    return txt || null;
+  }
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
 }
+
+
+
 
 // ---------- boot (auto-login via ?username&password) ----------
 (async function boot() {
@@ -105,7 +121,7 @@ async function api(path, {method="GET", data, form, auth=true} = {}) {
       const form = new URLSearchParams();
       form.set("username", params.get("username"));
       form.set("password", params.get("password"));
-      const resp = await api("/api/v1/auth/login", { method:"POST", form, auth:false });
+      const resp = await api("/api/v1/auth/login", { method: "POST", form });
       token = resp.access_token;
       localStorage.setItem("quizogram_token", token);
       history.replaceState({}, "", location.pathname); // убираем креды из URL
@@ -185,37 +201,69 @@ async function renderHome() {
   const node = clone(tplHome);
   const feedBox = $(".feed", node);
   feedBox.innerHTML = `<div class="muted">Загрузка ленты…</div>`;
+
   try {
     const items = await api("/api/v1/social/feed");
+
     if (!items.length) {
       feedBox.innerHTML = `<div class="muted">Пока пусто. Подпишись на кого-нибудь или создай квиз.</div>`;
     } else {
       feedBox.innerHTML = "";
+
       items.forEach(item => {
         const card = document.createElement("div");
         card.className = "card";
         card.innerHTML = `
           <div class="row space-between">
             <b>@${escapeHtml(item.owner_username)}</b>
-            <span class="muted">❤ ${item.like_count}</span>
           </div>
           <h3>${escapeHtml(item.title)}</h3>
           <p class="muted">${escapeHtml(item.description || "")}</p>
-          <div class="row gap">
-            <button data-act="like">${item.is_liked_by_me ? "Убрать лайк" : "Лайк"}</button>
-            <button data-act="open">Открыть</button>
+
+          <div class="row gap actions">
+            <button class="like-btn" title="Лайк" data-act="like">
+              ${item.is_liked_by_me ? "❤️" : "🤍"}
+              <span class="like-count">${item.like_count}</span>
+            </button>
+            <button class="open-btn" title="Играть" data-act="open">🎮</button>
           </div>
         `;
-        card.querySelector('[data-act="like"]').onclick = async ()=>{
+
+        const likeBtn   = card.querySelector('[data-act="like"]');
+        const openBtn   = card.querySelector('[data-act="open"]');
+        const likeCount = card.querySelector(".like-count");
+
+        likeBtn.onclick = async () => {
+          const path = `/api/v1/social/like/${item.quiz_id}`;
+          const wasLiked = item.is_liked_by_me;
+
+          // оптимистичное обновление UI
+          item.is_liked_by_me = !wasLiked;
+          item.like_count += wasLiked ? -1 : 1;
+          likeBtn.firstChild.nodeValue = item.is_liked_by_me ? "❤️" : "🤍";
+          likeCount.textContent = item.like_count;
+
+          // анимации
+          likeBtn.classList.remove("heartbeat");
+          likeCount.classList.remove("pop");
+          void likeBtn.offsetWidth;  // перезапуск анимации
+          void likeCount.offsetWidth;
+          likeBtn.classList.add("heartbeat");
+          likeCount.classList.add("pop");
+
           try {
-            const path = `/api/v1/social/like/${item.quiz_id}`;
-            await api(path, { method: item.is_liked_by_me ? "DELETE" : "POST" });
-            await renderHome(); // обновим ленту
-          } catch (e) { alert("Не удалось обновить лайк"); }
+            await api(path, { method: wasLiked ? "DELETE" : "POST" });
+          } catch (e) {
+            // откат при ошибке
+            item.is_liked_by_me = wasLiked;
+            item.like_count += wasLiked ? 1 : -1;
+            likeBtn.firstChild.nodeValue = item.is_liked_by_me ? "❤️" : "🤍";
+            likeCount.textContent = item.like_count;
+            alert("Не удалось обновить лайк");
+          }
         };
-        card.querySelector('[data-act="open"]').onclick = ()=>{
-          openQuiz(item.quiz_id);
-        };
+
+        openBtn.onclick = () => openQuiz(item.quiz_id);
 
         feedBox.appendChild(card);
       });
@@ -224,6 +272,7 @@ async function renderHome() {
     feedBox.innerHTML = `<div class="error">Ошибка загрузки ленты</div>`;
     console.error(e);
   }
+
   setScreen(node);
 }
 
@@ -522,6 +571,100 @@ async function renderProfileSettings() {
   setScreen(node);
 }
 
+// --- ЗВУКИ ---
+function playCorrect() {
+  // Мягкий «дзынь» через WebAudio
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = "sine";
+  o.frequency.value = 880; // A5
+  g.gain.setValueAtTime(0.0001, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.4, ctx.currentTime + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+  o.connect(g).connect(ctx.destination);
+  o.start();
+  o.stop(ctx.currentTime + 0.4);
+}
+
+function playWrong() {
+  // Короткий «бззз» (ошибка)
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = "square";
+  o.frequency.setValueAtTime(220, ctx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(110, ctx.currentTime + 0.25);
+  g.gain.setValueAtTime(0.0001, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.5, ctx.currentTime + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
+  o.connect(g).connect(ctx.destination);
+  o.start();
+  o.stop(ctx.currentTime + 0.32);
+}
+
+// --- ОВЕРЛЕИ ---
+function showOverlay(colorClass, duration = 600) {
+  const ov = document.createElement("div");
+  ov.className = `fx-overlay ${colorClass}`;
+  document.body.appendChild(ov);
+  setTimeout(() => ov.classList.add("show"), 10);
+  setTimeout(() => {
+    ov.classList.remove("show");
+    setTimeout(() => ov.remove(), 250);
+  }, duration);
+}
+
+// --- КОНФЕТТИ (лёгкий, без библиотек) ---
+function confettiBurst(times = 240) {
+  const c = document.createElement("canvas");
+  c.className = "confetti-canvas";
+  document.body.appendChild(c);
+  const ctx = c.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const W = c.width  = window.innerWidth  * dpr;
+  const H = c.height = window.innerHeight * dpr;
+  c.style.width  = `${window.innerWidth}px`;
+  c.style.height = `${window.innerHeight}px`;
+
+  const pieces = [];
+  for (let i = 0; i < times; i++) {
+    pieces.push({
+      x: Math.random() * W,
+      y: -Math.random() * H * 0.4,
+      w: 6 * dpr,
+      h: 10 * dpr,
+      vx: (Math.random() - 0.5) * 3 * dpr,
+      vy: (2 + Math.random() * 3) * dpr,
+      rot: Math.random() * Math.PI,
+      vr: (Math.random() - 0.5) * 0.2,
+      col: `hsl(${Math.floor(Math.random()*360)},90%,60%)`
+    });
+  }
+
+  let t = 0;
+  const maxT = 120; // ~2 сек
+  function frame() {
+    ctx.clearRect(0,0,W,H);
+    pieces.forEach(p=>{
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rot += p.vr;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.col;
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
+    });
+    t++;
+    if (t < maxT) requestAnimationFrame(frame);
+    else c.remove();
+  }
+  frame();
+}
+
+
 async function openQuiz(quizId) {
   const tpl = document.getElementById("tpl-quiz");
   const node = tpl.content.cloneNode(true);
@@ -532,13 +675,12 @@ async function openQuiz(quizId) {
   const submit  = node.querySelector("#quizSubmitBtn");
 
   backBtn.addEventListener("click", async () => {
-    // вернёмся туда, где были (дом/поиск/профиль)
     if (activeTab === "search") await renderSearch();
     else if (activeTab === "profile") await renderProfile();
     else await renderHome();
   });
 
-  // загрузим квиз
+  // грузим квиз
   let quiz;
   try {
     quiz = await api(`/api/v1/quizzes/${quizId}`);
@@ -550,58 +692,126 @@ async function openQuiz(quizId) {
   titleEl.textContent = quiz.title || "Квиз";
   descEl.textContent  = quiz.description || "";
 
-  // отрисуем вопросы
-  // ожидаем структуру: quiz.questions: [{id, text, options:[{text},...]}, ...]
-  form.querySelectorAll(".q-block").forEach(n => n.remove());
-  quiz.questions.forEach((q, i) => {
+  // состояние шага
+  let idx = 0;                             // текущий вопрос
+  const answers = [];                      // накапливаем ответы {question_id, selected_option_index}
+
+  // прогресс (точки)
+  const progress = document.createElement("div");
+  progress.className = "quiz-progress";
+  form.parentNode.insertBefore(progress, form);
+
+  function renderProgress() {
+    progress.innerHTML = "";
+    for (let i = 0; i < quiz.questions.length; i++) {
+      const dot = document.createElement("span");
+      dot.className = "dot" + (i === idx ? " active" : "") + (i < idx ? " passed" : "");
+      progress.appendChild(dot);
+    }
+  }
+
+  function renderStep() {
+    renderProgress();
+    form.querySelectorAll(".q-block").forEach(n => n.remove());
+    submit.textContent = (idx < quiz.questions.length - 1) ? "Ответить" : "Завершить";
+
+    const q = quiz.questions[idx];
+
     const fs = document.createElement("fieldset");
     fs.className = "q-block";
     const legend = document.createElement("legend");
-    legend.textContent = `${i+1}. ${q.text}`;
+    legend.textContent = `${idx + 1}/${quiz.questions.length}. ${q.text}`;
     fs.appendChild(legend);
 
-    q.options.forEach((opt, idx) => {
-      const label = document.createElement("label");
-      label.className = "option";
-      label.innerHTML = `
-        <input type="radio" name="q_${q.id}" value="${idx}" ${idx === 0 ? "checked" : ""} />
+    q.options.forEach((opt, i) => {
+      const row = document.createElement("label");
+      row.className = "option";
+      row.innerHTML = `
+        <input type="radio" name="q_${q.id}" value="${i}" ${i === 0 ? "checked" : ""} />
         <span>${escapeHtml(opt.text)}</span>
       `;
-      fs.appendChild(label);
+      fs.appendChild(row);
     });
 
     form.insertBefore(fs, submit);
-  });
+  }
 
-  // отправка ответов
+  // первая отрисовка
+  renderStep();
+
+  // обработчик ответа на КАЖДОМ вопросе
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     submit.disabled = true;
+
+    const q = quiz.questions[idx];
+    const picked = form.querySelector(`input[name="q_${q.id}"]:checked`);
+    const selectedIdx = Number(picked?.value ?? 0);
+
+    // запросим проверку ОДНОГО вопроса
     try {
-      const answers = quiz.questions.map(q => {
-        const v = form.querySelector(`input[name="q_${q.id}"]:checked`);
-        return { question_id: q.id, selected_option_index: Number(v?.value ?? 0) };
-      });
-
-      const res = await api(`/api/v1/attempts/${quiz.id}`, {
+      const r = await api(`/api/v1/attempts/${quiz.id}/check`, {
         method: "POST",
-        data: { answers }
+        data: { question_id: q.id, selected_option_index: selectedIdx }
       });
 
-      alert(`Результат: ${res.score}/${res.total}`);
-      // после отправки вернёмся в профиль или ленту
-      if (activeTab === "profile") await renderProfile();
-      else await renderHome();
-    } catch (err) {
-      console.error(err);
-      alert("Не удалось отправить ответы");
-    } finally {
+      const block = form.querySelector(".q-block");
+      if (r.correct) {
+        block.classList.remove("wrong");
+        block.classList.add("correct");
+        confettiBurst(120);
+        playCorrect();
+        showOverlay("ok", 400);
+      } else {
+        block.classList.remove("correct");
+        block.classList.add("wrong");
+        playWrong();
+        showOverlay("bad", 500);
+      }
+
+      // сохраним ответ
+      answers[idx] = { question_id: q.id, selected_option_index: selectedIdx };
+
+      // следующая «ступень» через маленькую паузу
+      setTimeout(async () => {
+        if (idx < quiz.questions.length - 1) {
+          idx += 1;
+          renderStep();
+          submit.disabled = false;
+        } else {
+          // финал: отправим все ответы как раньше
+          try {
+            const res = await api(`/api/v1/attempts/${quiz.id}`, {
+              method: "POST",
+              data: { answers }
+            });
+
+            // финальный эффект (по желанию)
+            if (Number(res.score) === Number(res.total)) {
+              confettiBurst(240);
+              playCorrect();
+            }
+            alert(`Итог: ${res.score}/${res.total}`);
+            if (activeTab === "profile") renderProfile();
+            else renderHome();
+          } catch (err) {
+            console.error(err);
+            alert("Не удалось завершить попытку");
+            // Вернём в начало квиза
+            idx = 0; renderStep();
+          }
+        }
+      }, 450);
+    } catch (e2) {
+      console.error(e2);
+      alert("Ошибка проверки ответа");
       submit.disabled = false;
     }
   });
 
   setScreen(node);
 }
+
 
 async function renderRandom() {
   // простой клиентский рандом: запрашиваем все, выбираем случайный
@@ -663,13 +873,12 @@ async function renderRandom() {
 }
 
 async function renderPublicProfile(username) {
-  const node = clone(tplProfile);            // тот же шаблон, что и свой профиль
+  const node = clone(tplProfile);
   const meCard = $("#meCard", node);
 
   try {
     const p = await api(`/api/v1/profile/user/${encodeURIComponent(username)}`);
 
-    // сразу вычислим начальную подпись кнопки
     const needsBtn = !p.is_me;
     const initialLabel = p.is_following ? "Отписаться" : "Подписаться";
     const initialClass = p.is_following ? "follow-btn danger" : "follow-btn";
@@ -706,14 +915,11 @@ async function renderPublicProfile(username) {
       </div>
     `;
 
-    // навесим обработчики на плитки квизов
+    // плитки квизов
     const grid = $("#userQuizGrid", meCard);
     if (grid) {
       grid.querySelectorAll(".quiz-tile").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const id = btn.getAttribute("data-id");
-          openQuiz(id);
-        });
+        btn.addEventListener("click", () => openQuiz(btn.getAttribute("data-id")));
       });
     }
 
@@ -722,7 +928,7 @@ async function renderPublicProfile(username) {
       const btn = meCard.querySelector("#followBtn");
       const statsEl = meCard.querySelector("#publicStats");
 
-      const updateBtnView = () => {
+      const updateBtn = () => {
         btn.textContent = p.is_following ? "Отписаться" : "Подписаться";
         btn.className = p.is_following ? "follow-btn danger" : "follow-btn";
       };
@@ -739,23 +945,20 @@ async function renderPublicProfile(username) {
             p.is_following = true;
             p.followers = (p.followers || 0) + 1;
           }
-          // обновим счётчики и кнопку
           statsEl.innerHTML = `
             <span><b>${p.quiz_count}</b> квизов</span>
             <span><b>${p.followers}</b> подписчиков</span>
             <span><b>${p.following}</b> подписки</span>
           `;
-          updateBtnView();
-        } catch (e) {
-          console.error("[Follow] error:", e);
+          updateBtn();
+        } catch (err) {
           alert("Не удалось изменить подписку");
         } finally {
           btn.disabled = false;
         }
       });
 
-      // на всякий случай (если initClass не применился) обновим вид
-      updateBtnView();
+      updateBtn();
     }
   } catch (e) {
     console.error("[PublicProfile] load error:", e);
@@ -766,35 +969,4 @@ async function renderPublicProfile(username) {
 }
 
 
-if (!p.is_me) {
-  const btn = meCard.querySelector("#followBtn");
-  const setView = () => {
-    btn.textContent = p.is_following ? "Отписаться" : "Подписаться";
-    btn.className = p.is_following ? "follow-btn danger" : "follow-btn";
-  };
-  setView();
 
-  btn.addEventListener("click", async () => {
-    try {
-      if (p.is_following) {
-        await api(`/api/v1/follow/${encodeURIComponent(p.username)}`, { method: "DELETE" });
-        p.is_following = false;
-        // локально уменьшим followers у цели
-        p.followers = Math.max(0, (p.followers || 1) - 1);
-      } else {
-        await api(`/api/v1/follow/${encodeURIComponent(p.username)}`, { method: "POST" });
-        p.is_following = true;
-        p.followers = (p.followers || 0) + 1;
-      }
-      // перерисуем счётчики и кнопку
-      meCard.querySelector(".profile-stats").innerHTML = `
-        <span><b>${p.quiz_count}</b> квизов</span>
-        <span><b>${p.followers}</b> подписчиков</span>
-        <span><b>${p.following}</b> подписки</span>
-      `;
-      setView();
-    } catch (e) {
-      alert("Не удалось изменить подписку");
-    }
-  });
-}

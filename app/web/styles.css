@@ -377,3 +377,125 @@ textarea{min-height:90px;resize:vertical}
 .opt-row:hover { background: #23283b; }
 .opt-row input[type="radio"] { transform: scale(1.1); }
 
+/* overlay: плавное затемнение/подсветка на весь экран */
+.fx-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s ease;
+  z-index: 9999;
+  background: rgba(0,0,0,0); /* базовое */
+}
+.fx-overlay.show { opacity: 1; }
+.fx-overlay.ok  { background: rgba(0, 160, 80, 0.25); backdrop-filter: blur(1px); }
+.fx-overlay.bad { background: rgba(200, 40, 40, 0.30); backdrop-filter: blur(1px); }
+
+/* канвас конфетти поверх всего */
+.confetti-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+}
+
+/* точки прогресса шага */
+.quiz-progress {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0 4px;
+  justify-content: center;
+}
+.quiz-progress .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #3a4156;
+  opacity: .6;
+}
+.quiz-progress .dot.active {
+  background: #4da3ff;
+  opacity: 1;
+}
+.quiz-progress .dot.passed {
+  background: #34d399; /* зелёный за пройденные */
+  opacity: .9;
+}
+
+/* подсветка карточки вопроса */
+.q-block.correct { border: 1px solid #2aa46e; box-shadow: 0 0 0 2px rgba(42,164,110,.2) inset; }
+.q-block.wrong   { border: 1px solid #b84b4b; box-shadow: 0 0 0 2px rgba(184,75,75,.2) inset; }
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.like-btn, .open-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #fff;
+  transition: transform .12s ease;
+}
+
+.like-btn:hover, .open-btn:hover {
+  transform: scale(1.15);
+}
+
+.like-count {
+  font-size: 1rem;
+  color: #ccc;
+}
+
+.like-btn { filter: drop-shadow(0 0 2px rgba(255,0,0,0.35)); }
+.open-btn { filter: drop-shadow(0 0 2px rgba(0,180,255,0.35)); }
+
+/* лайк-кнопки и счетчик */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+.like-btn, .open-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+}
+
+/* pop анимация для числа */
+@keyframes pop {
+  0%   { transform: scale(1);   }
+  35%  { transform: scale(1.35);}
+  100% { transform: scale(1);   }
+}
+.like-count.pop {
+  animation: pop .35s ease;
+}
+
+/* heartbeat анимация для сердца */
+@keyframes heartbeat {
+  0%   { transform: scale(1);   }
+  30%  { transform: scale(1.25);}
+  100% { transform: scale(1);   }
+}
+.like-btn.heartbeat {
+  animation: heartbeat .35s ease;
+}
+
+.like-btn { filter: drop-shadow(0 0 2px rgba(255,0,0,.35)); }
+.open-btn { filter: drop-shadow(0 0 2px rgba(0,170,255,.35)); }

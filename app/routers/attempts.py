@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Dict
 
-from .. import models
+from .. import models, schemas
 from ..deps import get_db, get_current_user
 from ..schemas import AttemptCreate, AttemptOut, AttemptAnswerOut, LeaderboardRow
 
@@ -146,3 +146,25 @@ def leaderboard(
              .order_by(subq.c.best_score.desc()).all()
 
     return [LeaderboardRow(user_id=r.user_id, best_score=r.best_score, total=r.total) for r in rows]
+
+class CheckPayload(schemas.BaseModel):  # если нет BaseModel — импортни из pydantic
+    question_id: int
+    selected_option_index: int
+
+@router.post("/{quiz_id}/check")
+def check_answer(
+    quiz_id: int,
+    payload: CheckPayload,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    # убедимся, что вопрос принадлежит этому квизу
+    q = db.query(models.Question).filter(
+        models.Question.id == payload.question_id,
+        models.Question.quiz_id == quiz_id,
+    ).first()
+    if not q:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    correct = (payload.selected_option_index == q.correct_option_index)
+    return {"correct": bool(correct)}
