@@ -121,6 +121,22 @@
     </div>
   </template>
 
+  <template id="tpl-quiz">
+    <div class="quiz-view vstack gap">
+      <div class="row space-between">
+        <h2 id="quizTitle">Квиз</h2>
+        <button class="icon-btn" id="quizBackBtn" title="Назад">←</button>
+      </div>
+
+      <p class="muted" id="quizDesc"></p>
+
+      <form id="quizForm" class="quiz-form vstack gap">
+        <!-- сюда JS отрисует вопросы -->
+        <button class="primary" id="quizSubmitBtn">Отправить ответы</button>
+      </form>
+    </div>
+  </template>
+
 
   <script src="./app.js" defer></script>
 </body>

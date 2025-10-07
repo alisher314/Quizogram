@@ -212,12 +212,10 @@ async function renderHome() {
             await renderHome(); // обновим ленту
           } catch (e) { alert("Не удалось обновить лайк"); }
         };
-        card.querySelector('[data-act="open"]').onclick = async ()=>{
-          try {
-            const q = await api(`/api/v1/quizzes/${item.quiz_id}`);
-            alert(`Вопросов: ${q.questions.length}`);
-          } catch (e) { alert("Не удалось открыть квиз"); }
+        card.querySelector('[data-act="open"]').onclick = ()=>{
+          openQuiz(item.quiz_id);
         };
+
         feedBox.appendChild(card);
       });
     }
@@ -262,12 +260,9 @@ async function renderSearch() {
         <div class="muted">${escapeHtml(x.description||"")}</div>
         <button data-open>Открыть</button>
       `;
-      item.querySelector("[data-open]").onclick = async ()=>{
-        try {
-          const qz = await api(`/api/v1/quizzes/${x.id}`);
-          alert(`Квиз #${x.id}. Вопросов: ${qz.questions.length}`);
-        } catch (e) { alert("Не удалось открыть квиз");}
-      };
+      item.querySelector("[data-open]").onclick = ()=>{
+          openQuiz(x.id);
+        };
       list.appendChild(item);
     });
   }
@@ -369,12 +364,9 @@ async function renderProfile() {
     const grid = $("#userQuizGrid", meCard);
     if (grid) {
       grid.querySelectorAll(".quiz-tile").forEach(btn => {
-        btn.addEventListener("click", async () => {
+        btn.addEventListener("click", () => {
           const id = btn.getAttribute("data-id");
-          try {
-            const qz = await api(`/api/v1/quizzes/${id}`);
-            alert(`Квиз #${id}. Вопросов: ${qz.questions.length}`);
-          } catch { alert("Не удалось открыть квиз"); }
+          openQuiz(id);
         });
       });
     }
@@ -462,3 +454,83 @@ async function renderProfileSettings() {
   setScreen(node);
 }
 
+async function openQuiz(quizId) {
+  const tpl = document.getElementById("tpl-quiz");
+  const node = tpl.content.cloneNode(true);
+  const backBtn = node.querySelector("#quizBackBtn");
+  const titleEl = node.querySelector("#quizTitle");
+  const descEl  = node.querySelector("#quizDesc");
+  const form    = node.querySelector("#quizForm");
+  const submit  = node.querySelector("#quizSubmitBtn");
+
+  backBtn.addEventListener("click", async () => {
+    // вернёмся туда, где были (дом/поиск/профиль)
+    if (activeTab === "search") await renderSearch();
+    else if (activeTab === "profile") await renderProfile();
+    else await renderHome();
+  });
+
+  // загрузим квиз
+  let quiz;
+  try {
+    quiz = await api(`/api/v1/quizzes/${quizId}`);
+  } catch (e) {
+    alert("Не удалось загрузить квиз");
+    return;
+  }
+
+  titleEl.textContent = quiz.title || "Квиз";
+  descEl.textContent  = quiz.description || "";
+
+  // отрисуем вопросы
+  // ожидаем структуру: quiz.questions: [{id, text, options:[{text},...]}, ...]
+  form.querySelectorAll(".q-block").forEach(n => n.remove());
+  quiz.questions.forEach((q, i) => {
+    const fs = document.createElement("fieldset");
+    fs.className = "q-block";
+    const legend = document.createElement("legend");
+    legend.textContent = `${i+1}. ${q.text}`;
+    fs.appendChild(legend);
+
+    q.options.forEach((opt, idx) => {
+      const label = document.createElement("label");
+      label.className = "option";
+      label.innerHTML = `
+        <input type="radio" name="q_${q.id}" value="${idx}" ${idx === 0 ? "checked" : ""} />
+        <span>${escapeHtml(opt.text)}</span>
+      `;
+      fs.appendChild(label);
+    });
+
+    form.insertBefore(fs, submit);
+  });
+
+  // отправка ответов
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    submit.disabled = true;
+    try {
+      const answers = quiz.questions.map(q => {
+        const v = form.querySelector(`input[name="q_${q.id}"]:checked`);
+        return { question_id: q.id, selected_option_index: Number(v?.value ?? 0) };
+      });
+
+      const res = await api(`/api/v1/attempts/${quiz.id}`, {
+        method: "POST",
+        data: { answers }
+      });
+
+      alert(`Результат: ${res.score}/${res.total}`);
+      // после отправки вернёмся в профиль или ленту
+      if (activeTab === "profile") await renderProfile();
+      else await renderHome();
+    } catch (err) {
+      console.error(err);
+      alert("Не удалось отправить ответы");
+    } finally {
+      submit.disabled = false;
+    }
+  });
+
+  setScreen(node);
+}

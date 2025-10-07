@@ -255,3 +255,32 @@ textarea{min-height:90px;resize:vertical}
   font-size: 0.9rem;
   padding: 4px 8px;
 }
+
+.quiz-view .muted { margin-top: -6px; }
+
+.quiz-form .q-block {
+  border: 1px solid #2c3342;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #1f2430;
+}
+
+.quiz-form legend {
+  padding: 0 6px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border-radius: 8px;
+}
+.option:hover {
+  background: #23283b;
+}
+.option input[type="radio"] {
+  transform: scale(1.1);
+}
