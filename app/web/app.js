@@ -369,73 +369,147 @@ async function renderSearch() {
 
 
 
-// CREATE (новый квиз)
+// CREATE (новый квиз) — динамические вопросы
 async function renderCreate() {
   const node = clone(tplCreate);
   const form = $("#quizForm", node);
+  const qContainer = $("#qContainer", node);
+  const addBtn = $("#addQuestionBtn", node);
 
+  // фабрика вопроса
+  function createQuestionBox(idx) {
+    const fs = document.createElement("fieldset");
+    fs.className = "qbox";
+    fs.dataset.idx = String(idx);
+
+    fs.innerHTML = `
+      <legend>Вопрос ${idx + 1}</legend>
+      <input name="q${idx}_text" placeholder="Текст вопроса" required />
+
+      <div class="vstack gap small">
+        ${[0,1,2,3].map(oi => `
+          <label class="option row gap">
+            <input type="radio" name="q${idx}_correct" value="${oi}" ${oi===0 ? "checked" : ""} />
+            <input name="q${idx}_opt${oi}" placeholder="Вариант ${oi+1}"/>
+          </label>
+        `).join("")}
+      </div>
+
+      <div class="row gap" style="justify-content:flex-end;margin-top:6px;">
+        <button type="button" class="danger" data-act="remove">Удалить вопрос</button>
+      </div>
+    `;
+
+    // удаление вопроса
+    fs.querySelector('[data-act="remove"]').addEventListener("click", () => {
+      fs.remove();
+      renumber();
+    });
+
+    return fs;
+  }
+
+  // пере-нумерация после удаления
+  function renumber() {
+    const blocks = [...qContainer.querySelectorAll(".qbox")];
+    blocks.forEach((fs, newIdx) => {
+      const oldIdx = Number(fs.dataset.idx);
+      fs.dataset.idx = String(newIdx);
+      fs.querySelector("legend").textContent = `Вопрос ${newIdx + 1}`;
+
+      // переименуем инпуты под новый индекс
+      fs.querySelectorAll("input").forEach(inp => {
+        if (inp.name.startsWith(`q${oldIdx}_`)) {
+          inp.name = inp.name.replace(`q${oldIdx}_`, `q${newIdx}_`);
+        }
+      });
+    });
+  }
+
+  // добавить вопрос
+  function addQuestion() {
+    const idx = qContainer.querySelectorAll(".qbox").length;
+    const box = createQuestionBox(idx);
+    qContainer.appendChild(box);
+  }
+
+  // старт — один вопрос
+  addQuestion();
+
+  addBtn.addEventListener("click", addQuestion);
+
+  // сабмит формы
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(form);
-    const title = fd.get("title");
-    const description = fd.get("description") || "";
+    const title = (fd.get("title") || "").toString().trim();
+    const description = (fd.get("description") || "").toString();
 
-    const qs = [];
-    for (let qi = 0; qi < 2; qi++) {
-      const text = (fd.get(`q${qi}_text`) || "").trim();
-      if (!text) continue;
+    if (!title) {
+      alert("Введите название квиза");
+      return;
+    }
 
-      // соберём до 4-х вариантов с исходными индексами
-      const rawOptions = [];
-      for (let oi = 0; oi < 4; oi++) {
-        const val = (fd.get(`q${qi}_opt${oi}`) || "").trim();
-        if (val) rawOptions.push({ text: val, origIndex: oi });
+    const blocks = [...qContainer.querySelectorAll(".qbox")];
+    if (!blocks.length) {
+      alert("Добавьте хотя бы один вопрос");
+      return;
+    }
+
+    const questions = [];
+    for (const fs of blocks) {
+      const idx = Number(fs.dataset.idx);
+      const text = (fd.get(`q${idx}_text`) || "").toString().trim();
+      if (!text) {
+        alert(`Вопрос ${idx + 1}: заполните текст`);
+        return;
       }
 
+      // соберём непустые варианты
+      const rawOptions = [];
+      for (let oi = 0; oi < 4; oi++) {
+        const val = (fd.get(`q${idx}_opt${oi}`) || "").toString().trim();
+        if (val) rawOptions.push({ text: val, origIndex: oi });
+      }
       if (rawOptions.length < 2) {
-        alert(`Вопрос ${qi + 1}: нужно минимум 2 варианта`);
+        alert(`Вопрос ${idx + 1}: минимум 2 варианта`);
         return;
       }
 
       // выбранный радиобаттон (исходный индекс)
-      const selectedRaw = parseInt(fd.get(`q${qi}_correct`) ?? "0", 10);
+      const selectedRaw = Number(fd.get(`q${idx}_correct`) ?? 0);
 
-      // теперь нужно найти позицию выбранного среди НЕпустых вариантов
+      // найти позицию выбранного среди НЕпустых
       let correct = 0;
       for (let k = 0; k < rawOptions.length; k++) {
-        if (rawOptions[k].origIndex === selectedRaw) {
-          correct = k;
-          break;
-        }
+        if (rawOptions[k].origIndex === selectedRaw) { correct = k; break; }
       }
 
-      qs.push({
+      questions.push({
         text,
         options: rawOptions.map(o => ({ text: o.text })),
         correct_option_index: correct,
       });
     }
 
-    if (!qs.length) {
-      alert("Добавьте хотя бы один вопрос");
-      return;
-    }
-
     try {
-      const payload = { title: String(title), description: String(description), questions: qs };
+      const payload = { title, description, questions };
       const created = await api("/api/v1/quizzes/", { method: "POST", data: payload });
       alert(`Квиз создан: id=${created.id}`);
       form.reset();
+      qContainer.innerHTML = "";
+      addQuestion(); // новый чистый вопрос
       setActiveTab("home");
       await renderHome();
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error(err);
       alert("Не удалось создать квиз");
     }
   });
 
   setScreen(node);
 }
+
 
 
 // PROFILE

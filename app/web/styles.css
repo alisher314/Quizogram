@@ -541,3 +541,9 @@ button.ghost {
 button.ghost:hover {
   background: #23283b;
 }
+
+.qbox { border:1px solid #2c3342; border-radius:12px; padding:12px; margin:8px 0; }
+.qbox legend { font-weight:700; padding:0 4px; }
+.qbox .option input[type="text"] { flex:1; }
+button.ghost { background:transparent; border:1px solid #2c3342; }
+button.danger { background:#5a2c2c; border:1px solid #7a3a3a; }
