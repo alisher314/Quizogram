@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime, func
+
+
+from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime, func, UniqueConstraint
 from sqlalchemy.orm import relationship
 from .database import Base
 
@@ -61,3 +63,29 @@ class AttemptAnswer(Base):
     is_correct = Column(Integer, nullable=False)  # 1 или 0
 
     attempt = relationship("Attempt", back_populates="answers")
+
+class Follow(Base):
+    __tablename__ = "follows"
+    id = Column(Integer, primary_key=True)
+    follower_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    following_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("follower_id", "following_id", name="uix_follower_following"),
+    )
+
+class Like(Base):
+    __tablename__ = "likes"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    quiz_id = Column(Integer, ForeignKey("quizzes.id"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "quiz_id", name="uix_user_quiz_like"),
+    )
+
+    # не обязательно, но на будущее:
+    user = relationship("User")
+    quiz = relationship("Quiz")

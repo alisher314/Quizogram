@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from . import models
 from .database import engine
-from .routers import auth, users, quizzes, attempts
+from .routers import auth, users, quizzes, attempts, social
 
 app = FastAPI(
     title="Quizogram API",
@@ -15,6 +15,7 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(quizzes.router)
 app.include_router(attempts.router)
+app.include_router(social.router)
 
 @app.get("/health", tags=["system"])
 def health():

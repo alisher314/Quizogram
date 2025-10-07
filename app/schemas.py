@@ -89,3 +89,15 @@ class LeaderboardRow(BaseModel):
     user_id: int
     best_score: int
     total: int
+
+class FeedItem(BaseModel):
+    quiz_id: int
+    title: str
+    description: Optional[str] = None
+    owner_id: int
+    owner_username: str
+    like_count: int
+    is_liked_by_me: bool
+
+    class Config:
+        from_attributes = True
