@@ -328,33 +328,107 @@ async function renderCreate() {
 
 // PROFILE
 async function renderProfile() {
-  const node = clone(tplProfile);
-  const meCard     = $("#meCard", node);
-  const avatarGrid = $("#avatarGrid", node);
-  const bioForm    = $("#bioForm", node);
+  const node = clone(document.getElementById("tpl-profile"));
+  const meCard = $("#meCard", node);
 
   try {
     const me = await api("/api/v1/profile/me");
     meCard.innerHTML = `
-      <img src="${me.avatar_url}" width="72" height="72" style="image-rendering:pixelated;border-radius:8px;border:1px solid #2c3342"/>
-      <div>
-        <div><b>user_id:</b> ${me.user_id}</div>
-        <div class="muted">${escapeHtml(me.bio || "Био не заполнено")}</div>
+      <div class="profile-header">
+        <img src="${me.avatar_url}" width="96" height="96"
+             style="image-rendering:pixelated;border-radius:50%;border:2px solid #2c3342"/>
+        <div class="profile-info">
+          <h2>
+            @${escapeHtml(me.username)}
+            <button class="icon-btn" id="editProfileBtn" title="Настройки профиля">✎</button>
+          </h2>
+          <div class="profile-stats">
+            <span><b>${me.quiz_count}</b> квизов</span>
+            <span><b>${me.followers}</b> подписчиков</span>
+            <span><b>${me.following}</b> подписки</span>
+          </div>
+          <p class="muted">${escapeHtml(me.bio || "О себе пока ничего нет")}</p>
+        </div>
+      </div>
+
+      <h3 style="margin-top:1rem;">Мои квизы</h3>
+      <div class="quiz-grid" id="userQuizGrid">
+        ${
+          (me.quizzes && me.quizzes.length)
+          ? me.quizzes.map(q => `
+              <button class="quiz-tile" data-id="${q.id}" title="${escapeHtml(q.title)}">
+                <div class="quiz-tile-title">${escapeHtml(q.title)}</div>
+              </button>
+            `).join("")
+          : '<div class="muted">Пока нет квизов</div>'
+        }
       </div>
     `;
+
+    // открытие квиза
+    const grid = $("#userQuizGrid", meCard);
+    if (grid) {
+      grid.querySelectorAll(".quiz-tile").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-id");
+          try {
+            const qz = await api(`/api/v1/quizzes/${id}`);
+            alert(`Квиз #${id}. Вопросов: ${qz.questions.length}`);
+          } catch { alert("Не удалось открыть квиз"); }
+        });
+      });
+    }
+
+    // переход в настройки
+    const editBtn = $("#editProfileBtn", meCard);
+    if (editBtn) {
+      editBtn.addEventListener("click", () => renderProfileSettings());
+    }
   } catch (e) {
     meCard.innerHTML = `<div class="error">Не удалось загрузить профиль</div>`;
     console.error(e);
   }
 
+  setScreen(node);
+}
+
+async function renderProfileSettings() {
+  const node = clone(document.getElementById("tpl-profile-settings"));
+  const backBtn     = $("#backToProfile", node);
+  const settingsHdr = $("#settingsHeader", node);
+  const avatarGrid  = $("#avatarGrid", node);
+  const bioForm     = $("#bioForm", node);
+
+  backBtn.addEventListener("click", () => renderProfile());
+
+  // загрузим текущие данные
+  let me;
+  try {
+    me = await api("/api/v1/profile/me");
+    settingsHdr.innerHTML = `
+      <img src="${me.avatar_url}" width="72" height="72"
+           style="image-rendering:pixelated;border-radius:50%;border:1px solid #2c3342"/>
+      <div>
+        <div><b>@${escapeHtml(me.username)}</b></div>
+        <div class="muted small">${escapeHtml(me.bio || "О себе не заполнено")}</div>
+      </div>
+    `;
+    // предварительно подставим текущее био
+    bioForm.bio.value = me.bio || "";
+  } catch (e) {
+    settingsHdr.innerHTML = `<div class="error">Не удалось загрузить профиль</div>`;
+  }
+
+  // список аватаров
   try {
     const options = await api("/api/v1/profile/avatars");
     avatarGrid.innerHTML = "";
-    options.forEach(opt => {
+    options.forEach(opt=>{
       const btn = document.createElement("button");
       btn.className = "avatar-btn";
       btn.innerHTML = `
-        <img src="${opt.url}" alt="${opt.key}" width="72" height="72" style="image-rendering:pixelated;border-radius:8px;border:1px solid #2c3342">
+        <img src="${opt.url}" alt="${opt.key}" width="72" height="72"
+             style="image-rendering:pixelated;border-radius:8px;border:1px solid #2c3342">
         <small>${opt.key}</small>
       `;
       btn.addEventListener("click", ()=>{
@@ -362,13 +436,15 @@ async function renderProfile() {
         [...avatarGrid.children].forEach(c=>c.classList.remove("selected"));
         btn.classList.add("selected");
       });
+      // выделим текущий
+      if (me && opt.url === me.avatar_url) btn.classList.add("selected");
       avatarGrid.appendChild(btn);
     });
   } catch (e) {
     avatarGrid.innerHTML = `<div class="error">Не удалось загрузить аватары</div>`;
-    console.error(e);
   }
 
+  // сохранение
   bioForm.addEventListener("submit", async (e)=>{
     e.preventDefault();
     try {
@@ -376,13 +452,13 @@ async function renderProfile() {
       if (!payload.bio) delete payload.bio;
       if (!payload.avatar_key) delete payload.avatar_key;
       await api("/api/v1/profile/me", { method:"PATCH", data: payload });
-      alert("Сохранено");
-      await renderProfile();
+      alert("Настройки сохранены");
+      renderProfile(); // вернёмся на профиль
     } catch (e) {
-      console.error(e);
       alert("Не удалось сохранить");
     }
   });
 
   setScreen(node);
 }
+

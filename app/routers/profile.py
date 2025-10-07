@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -8,7 +8,7 @@ from ..schemas import ProfileOut, ProfileUpdate, AvatarOption
 
 router = APIRouter(prefix="/api/v1/profile", tags=["profile"])
 
-# Набор допустимых аватаров (ключ = имя файла в app/static/avatars)
+# Доступные 8-битные аватарки (должны лежать в app/static/avatars)
 ALLOWED_AVATARS = [
     "8bit_default.png",
     "8bit_knight.png",
@@ -18,9 +18,11 @@ ALLOWED_AVATARS = [
     "8bit_alien.png",
 ]
 
+
 def avatar_url(request: Request, key: str) -> str:
     base = str(request.base_url).rstrip("/")
     return f"{base}/static/avatars/{key}"
+
 
 def get_or_create_profile(db: Session, user_id: int) -> models.Profile:
     prof = db.query(models.Profile).filter(models.Profile.user_id == user_id).first()
@@ -32,18 +34,60 @@ def get_or_create_profile(db: Session, user_id: int) -> models.Profile:
     db.refresh(prof)
     return prof
 
-@router.get("/me", response_model=ProfileOut)
+
+@router.get("/me")
 def get_my_profile(
     request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
+    """
+    Возвращает профиль текущего пользователя в «инста»-формате:
+    - username
+    - bio
+    - avatar_url
+    - quiz_count
+    - followers / following (пока заглушки = 0)
+    - quizzes: список моих квизов (id, title, description)
+    """
     prof = get_or_create_profile(db, current_user.id)
-    return ProfileOut(
-        user_id=current_user.id,
-        bio=prof.bio,
-        avatar_url=avatar_url(request, prof.avatar_key),
+
+    # Кол-во созданных квизов
+    quiz_count = (
+        db.query(models.Quiz)
+        .filter(models.Quiz.owner_id == current_user.id)
+        .count()
     )
+
+    # TODO: когда реализуем модель подписок (Follow), заменить заглушки
+    followers = 0
+    following = 0
+
+    # Список моих квизов
+    my_quizzes = (
+        db.query(models.Quiz)
+        .filter(models.Quiz.owner_id == current_user.id)
+        .order_by(models.Quiz.id.desc())
+        .all()
+    )
+
+    return {
+        "username": current_user.username,
+        "bio": prof.bio,
+        "avatar_url": avatar_url(request, prof.avatar_key),
+        "quiz_count": quiz_count,
+        "followers": followers,
+        "following": following,
+        "quizzes": [
+            {
+                "id": q.id,
+                "title": q.title,
+                "description": q.description or "",
+            }
+            for q in my_quizzes
+        ],
+    }
+
 
 @router.patch("/me", response_model=ProfileOut)
 def update_my_profile(
@@ -52,6 +96,10 @@ def update_my_profile(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
+    """
+    Обновление био и аватарки (из ALLOWED_AVATARS).
+    Возвращает компактную модель ProfileOut, которую уже использует фронт.
+    """
     prof = get_or_create_profile(db, current_user.id)
 
     if payload.bio is not None:
@@ -72,6 +120,10 @@ def update_my_profile(
         avatar_url=avatar_url(request, prof.avatar_key),
     )
 
+
 @router.get("/avatars", response_model=List[AvatarOption])
 def list_avatars(request: Request) -> List[AvatarOption]:
+    """
+    Возвращает список доступных встроенных 8-битных аватаров.
+    """
     return [AvatarOption(key=k, url=avatar_url(request, k)) for k in ALLOWED_AVATARS]

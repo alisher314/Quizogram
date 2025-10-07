@@ -94,9 +94,25 @@
 
   <template id="tpl-profile">
     <div class="profile vstack gap">
-      <div class="row gap" id="meCard"><!-- аватар + био --></div>
+      <div class="row gap" id="meCard"><!-- avatar + username + stats + grid --></div>
+    </div>
+  </template>
+
+  <template id="tpl-profile-settings">
+    <div class="profile-settings vstack gap">
+      <div class="row space-between">
+        <h2>Настройки профиля</h2>
+        <button class="icon-btn" id="backToProfile" title="Назад">←</button>
+      </div>
+
+      <div id="settingsHeader" class="row gap" style="align-items:center">
+        <!-- текущий аватар + username -->
+      </div>
+
       <h3>Выбери аватар</h3>
       <div id="avatarGrid" class="avatar-grid"></div>
+
+      <h3>О себе</h3>
       <form id="bioForm" class="vstack gap">
         <textarea name="bio" placeholder="О себе..."></textarea>
         <input type="hidden" name="avatar_key"/>
@@ -104,6 +120,7 @@
       </form>
     </div>
   </template>
+
 
   <script src="./app.js" defer></script>
 </body>

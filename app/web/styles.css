@@ -46,3 +46,212 @@ textarea{min-height:90px;resize:vertical}
 .avatar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px}
 .avatar-grid button{display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:12px;background:#12151d;padding:8px;color:var(--ink);cursor:pointer}
 .avatar-grid img{width:72px;height:72px;image-rendering:pixelated;border-radius:8px;border:1px solid var(--line)}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 1rem;
+  flex-wrap: wrap; /* чтобы на маленьких экранах аватар и инфо переносились */
+}
+.profile-info h2{
+  margin:0;
+  font-size:1.4rem;
+}
+.profile-stats{
+  display:flex;
+  gap:16px;
+  font-size:0.95rem;
+  color:#ccc;
+  margin:.25rem 0 .5rem;
+}
+
+.quiz-grid{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:8px;
+}
+.quiz-tile{
+  background:#1c1f2a;
+  border:1px solid #2c3342;
+  border-radius:10px;
+  padding:10px;
+  min-height:90px;
+  cursor:pointer;
+  transition:transform .12s ease, background .12s ease, border-color .12s ease;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+.quiz-tile:hover{
+  transform:scale(1.02);
+  background:#23283b;
+  border-color:#39425a;
+}
+.quiz-tile-title{
+  font-weight:600;
+  line-height:1.2;
+}
+
+.icon-btn{
+  background:#1f2430;border:1px solid #2c3342;border-radius:10px;padding:6px 10px;cursor:pointer
+}
+.icon-btn:hover{border-color:#5eead4}
+
+.profile-header{
+  display:flex;align-items:center;gap:16px
+}
+.profile-info h2{margin:0;font-size:1.4rem;display:flex;align-items:center;gap:8px}
+.profile-stats{display:flex;gap:16px;font-size:.95rem;color:#ccc;margin:.25rem 0 .5rem}
+
+.quiz-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.quiz-tile{
+  background:#1c1f2a;border:1px solid #2c3342;border-radius:10px;padding:10px;min-height:90px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;text-align:center;
+  transition:transform .12s ease, background .12s ease, border-color .12s ease
+}
+.quiz-tile:hover{transform:scale(1.02);background:#23283b;border-color:#39425a}
+.quiz-tile-title{font-weight:600;line-height:1.2}
+
+.avatar-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px
+}
+.avatar-btn{display:flex;flex-direction:column;align-items:center;padding:8px;border:1px solid #2c3342;border-radius:10px;background:#1f2430;cursor:pointer}
+.avatar-btn.selected{outline:2px solid #5eead4}
+
+.profile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* --- PROFILE LAYOUT FIX --- */
+.profile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* у #meCard убираем "row"-поведение */
+#meCard {
+  display: block;           /* перебивает .row { display:flex } */
+}
+
+/* шапка профиля (аватар + инфо) */
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 1rem;      /* отступ вниз, чтобы сетка была ниже */
+  flex-wrap: wrap;          /* красиво переносится на узких экранах */
+}
+
+/* counters */
+.profile-info h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.profile-stats {
+  display: flex;
+  gap: 16px;
+  font-size: .95rem;
+  color: #ccc;
+  margin: .25rem 0 .5rem;
+}
+
+/* сетка "Мои квизы" — всегда под шапкой */
+.quiz-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+.quiz-tile {
+  background: #1c1f2a;
+  border: 1px solid #2c3342;
+  border-radius: 10px;
+  padding: 10px;
+  min-height: 90px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
+.quiz-tile:hover {
+  transform: scale(1.02);
+  background: #23283b;
+  border-color: #39425a;
+}
+.quiz-tile-title {
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* страница настроек — чтобы сетка аватаров выглядела ровно */
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+.avatar-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid #2c3342;
+  border-radius: 10px;
+  background: #1f2430;
+  cursor: pointer;
+}
+.avatar-btn.selected { outline: 2px solid #5eead4; }
+
+.icon-btn{
+  background:#1f2430;border:1px solid #2c3342;border-radius:10px;padding:6px 10px;cursor:pointer
+}
+.icon-btn:hover{border-color:#5eead4}
+
+.profile-header {
+  border-bottom: 1px solid #2c3342;
+  padding-bottom: 1rem;
+}
+
+.quiz-tile {
+  background: #222738;
+  aspect-ratio: 1 / 1; /* квадрат */
+  overflow: hidden;
+  position: relative;
+}
+.quiz-tile-title {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 0.9rem;
+  padding: 4px 6px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.profile-info h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.icon-btn {
+  font-size: 0.9rem;
+  padding: 4px 8px;
+}
