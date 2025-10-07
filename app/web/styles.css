@@ -1,0 +1,48 @@
+:root{
+  --bg:#0b0c10; --card:#15171c; --ink:#eaecef; --muted:#9aa0a6; --line:#232732; --accent:#5eead4;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font:16px/1.45 Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;background:var(--bg);color:var(--ink)}
+
+/* LOGIN */
+.login-screen{display:grid;place-items:center;min-height:100vh;padding:24px}
+.login-card{width:100%;max-width:360px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+.brand{font-size:28px;margin:0 0 16px;text-align:center;letter-spacing:.5px}
+.vstack{display:grid;gap:10px}
+.small{font-size:13px}
+.muted{color:var(--muted)}
+.primary{background:var(--accent);color:#002b29;border:none;padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:600}
+input,textarea{background:#0f1218;color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px}
+textarea{min-height:90px;resize:vertical}
+
+/* APP SHELL */
+.app-layout{display:grid;grid-template-rows:auto 1fr auto;min-height:100vh}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.2);backdrop-filter:blur(4px);position:sticky;top:0;z-index:5}
+.brand-small{font-weight:700}
+.icon-btn{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:12px;padding:6px 10px;cursor:pointer}
+
+.screen{padding:10px 10px 70px 10px;max-width:680px;margin:0 auto;width:100%}
+
+/* TABBAR */
+.tabbar{position:fixed;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:#0e1016;border-top:1px solid var(--line);padding:8px 10px}
+.tab{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:12px;padding:10px 0;cursor:pointer}
+.tab.active{border-color:var(--accent)}
+.tab.big{font-size:22px;font-weight:700}
+
+/* FEED & CARDS */
+.feed,.grid-list{display:grid;gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px}
+.row{display:flex;align-items:center}
+.gap{gap:12px}
+.inline{display:flex;align-items:center;gap:8px}
+.qbox{border:1px dashed var(--line);border-radius:12px;padding:8px}
+
+.item h3{margin:0 0 6px}
+.item .sub{color:var(--muted);font-size:14px;display:flex;gap:8px}
+
+/* PROFILE */
+.avatar{width:64px;height:64px;image-rendering:pixelated;border-radius:10px;border:1px solid var(--line)}
+.avatar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px}
+.avatar-grid button{display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:12px;background:#12151d;padding:8px;color:var(--ink);cursor:pointer}
+.avatar-grid img{width:72px;height:72px;image-rendering:pixelated;border-radius:8px;border:1px solid var(--line)}

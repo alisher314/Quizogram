@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Регистрация — Quizogram</title>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body class="login-screen">
+  <div class="login-card">
+    <h1 class="brand">Регистрация</h1>
+    <form id="registerForm" class="vstack">
+      <input name="username" placeholder="Имя пользователя" required />
+      <input name="email" type="email" placeholder="Email" required />
+      <input name="password" type="password" placeholder="Пароль" required />
+      <button class="primary">Создать аккаунт</button>
+    </form>
+    <p class="muted small">Уже есть аккаунт? Закройте это окно и войдите.</p>
+    <p id="msg" class="muted small"></p>
+  </div>
+
+  <script>
+    const API = location.origin;
+    async function api(path, {method="GET", data}={}) {
+      const headers = {"Content-Type":"application/json"};
+      const res = await fetch(API+path, {method, headers, body: data?JSON.stringify(data):undefined});
+      if(!res.ok){ throw new Error(await res.text()); }
+      return res.json();
+    }
+    const form = document.getElementById("registerForm");
+    const msg = document.getElementById("msg");
+    form.onsubmit = async (e)=>{
+      e.preventDefault();
+      msg.textContent = "";
+      const payload = Object.fromEntries(new FormData(form));
+      try{
+        await api("/api/v1/auth/register",{method:"POST", data:payload});
+        msg.textContent = "Готово! Теперь вернитесь на вкладку входа и войдите.";
+      }catch(err){
+        msg.textContent = "Ошибка: " + err.message;
+      }
+    };
+  </script>
+</body>
+</html>

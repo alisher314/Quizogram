@@ -1,9 +1,15 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from pathlib import Path
+
 from . import models
 from .database import engine
 from .routers import auth, users, quizzes, attempts, social, profile
 
+
+BASE_DIR = Path(__file__).resolve().parent  # app/
+STATIC_DIR = BASE_DIR / "static"
+WEB_DIR = BASE_DIR / "web"
 
 app = FastAPI(
     title="Quizogram API",
@@ -12,7 +18,8 @@ app = FastAPI(
 )
 
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR), html=False), name="static")
+app.mount("/web", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
 
 models.Base.metadata.create_all(bind=engine)
 
