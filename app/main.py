@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 from . import models
 from .database import engine
-from .routers import auth, users
+from .routers import auth, users, quizzes, attempts
 
 app = FastAPI(
     title="Quizogram API",
-    version="0.4.0",
+    version="0.6.0",
     description="Соцсеть с квизами вместо фото и видео — с квизами!"
 )
 
@@ -13,6 +13,8 @@ models.Base.metadata.create_all(bind=engine)
 
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(quizzes.router)
+app.include_router(attempts.router)
 
 @app.get("/health", tags=["system"])
 def health():
