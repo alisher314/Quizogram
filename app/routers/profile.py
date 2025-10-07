@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -127,3 +127,65 @@ def list_avatars(request: Request) -> List[AvatarOption]:
     Возвращает список доступных встроенных 8-битных аватаров.
     """
     return [AvatarOption(key=k, url=avatar_url(request, k)) for k in ALLOWED_AVATARS]
+
+@router.get("/search_users")
+def search_users(
+    request: Request,
+    q: str = Query(..., min_length=2),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    # Кейс-инсensitive поиск (ilike эмулируется SQLAlchemy и на SQLite)
+    users = (
+        db.query(models.User)
+        .filter(models.User.username.ilike(f"%{q}%"))
+        .order_by(models.User.username.asc())
+        .limit(20)
+        .all()
+    )
+    results = []
+    for u in users:
+        p = get_or_create_profile(db, u.id)
+        results.append({
+            "username": u.username,
+            "avatar_url": avatar_url(request, p.avatar_key),
+        })
+    return {"results": results}
+
+@router.get("/user/{username}")
+def get_user_profile_public(
+    username: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    prof = get_or_create_profile(db, user.id)
+
+    quiz_count = db.query(models.Quiz).filter(models.Quiz.owner_id == user.id).count()
+    followers = 0  # TODO: replace after adding follow model
+    following = 0
+
+    quizzes = (
+        db.query(models.Quiz)
+        .filter(models.Quiz.owner_id == user.id)
+        .order_by(models.Quiz.id.desc())
+        .all()
+    )
+
+    return {
+        "username": user.username,
+        "bio": prof.bio,
+        "avatar_url": avatar_url(request, prof.avatar_key),
+        "quiz_count": quiz_count,
+        "followers": followers,
+        "following": following,
+        "quizzes": [
+            {"id": q.id, "title": q.title, "description": q.description or ""}
+            for q in quizzes
+        ],
+        "is_me": (user.id == current_user.id),
+    }

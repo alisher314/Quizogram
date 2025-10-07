@@ -231,50 +231,93 @@ async function renderHome() {
 async function renderSearch() {
   const node = clone(tplSearch);
   const form = $(".searchbar", node);
-  const list = $("#searchList", node);
+  const list = $("#searchList", node); // это .quiz-grid (плитки квизов)
   list.innerHTML = `<div class="muted">Загрузка…</div>`;
 
-  let all = [];
+  // Вставим блок под пользователей над сеткой
+  const usersWrap = document.createElement("div");
+  usersWrap.id = "userResults";
+  usersWrap.innerHTML = `
+    <h3 style="margin:.5rem 0">Пользователи</h3>
+    <div class="user-list" id="userList"></div>
+  `;
+  // Вставим usersWrap ПЕРЕД list
+  list.parentNode.insertBefore(usersWrap, list);
+
+  let allQuizzes = [];
   try {
-    all = await api("/api/v1/quizzes/");
+    allQuizzes = await api("/api/v1/quizzes/");
     list.innerHTML = "";
   } catch (e) {
-    list.innerHTML = `<div class="error">Не удалось загрузить список</div>`;
+    list.innerHTML = `<div class="error">Не удалось загрузить квизы</div>`;
     console.error(e);
   }
 
-  function render(filter="") {
+  async function renderUsers(filter) {
+    const userList = usersWrap.querySelector("#userList");
+    if (!filter || filter.trim().length < 2) {
+      userList.innerHTML = `<div class="muted small">Введите минимум 2 символа для поиска пользователей</div>`;
+      return;
+    }
+    try {
+      const res = await api(`/api/v1/profile/search_users?q=${encodeURIComponent(filter)}`);
+      const users = res.results || [];
+      if (!users.length) {
+        userList.innerHTML = `<div class="muted">Нет пользователей</div>`;
+        return;
+      }
+      userList.innerHTML = "";
+      users.forEach(u => {
+        const item = document.createElement("button");
+        item.className = "user-item";
+        item.innerHTML = `
+          <img src="${u.avatar_url}" width="36" height="36" style="image-rendering:pixelated;border-radius:50%;border:1px solid #2c3342"/>
+          <span>@${escapeHtml(u.username)}</span>
+        `;
+        item.addEventListener("click", () => renderPublicProfile(u.username));
+        userList.appendChild(item);
+      });
+    } catch (e) {
+      console.error(e);
+      userList.innerHTML = `<div class="error">Ошибка поиска пользователей</div>`;
+    }
+  }
+
+  function renderQuizzes(filter="") {
     list.innerHTML = "";
     const q = filter.trim().toLowerCase();
     const filtered = q
-      ? all.filter(x => (x.title||"").toLowerCase().includes(q) || (x.description||"").toLowerCase().includes(q))
-      : all;
+      ? allQuizzes.filter(x => (x.title||"").toLowerCase().includes(q) || (x.description||"").toLowerCase().includes(q))
+      : allQuizzes;
 
     if (!filtered.length) {
-      list.innerHTML = `<div class="muted">Ничего не найдено</div>`;
+      list.innerHTML = `<div class="muted">Квизы не найдены</div>`;
       return;
     }
-
     filtered.forEach(x => {
       const btn = document.createElement("button");
       btn.className = "quiz-tile";
       btn.title = x.title || "";
-      btn.innerHTML = `
-        <div class="quiz-tile-title">${escapeHtml(x.title)}</div>
-      `;
+      btn.innerHTML = `<div class="quiz-tile-title">${escapeHtml(x.title)}</div>`;
       btn.addEventListener("click", () => openQuiz(x.id));
       list.appendChild(btn);
     });
   }
 
   form.addEventListener("input", () => {
-    const val = new FormData(form).get("q") || "";
-    render(String(val));
+    const val = String(new FormData(form).get("q") || "");
+    renderUsers(val);
+    renderQuizzes(val);
   });
 
-  render();
+  // стартовый рендер без фильтра (покажем только квизы)
+  usersWrap.querySelector("#userList").innerHTML =
+    `<div class="muted small">Введите минимум 2 символа для поиска пользователей</div>`;
+  renderQuizzes();
+
   setScreen(node);
 }
+
 
 
 // CREATE (новый квиз)
@@ -591,6 +634,57 @@ async function renderRandom() {
   node.querySelector("#randomStart").addEventListener("click", () => {
     openQuiz(current.id);
   });
+
+  setScreen(node);
+}
+
+async function renderPublicProfile(username) {
+  const node = clone(tplProfile); // используем тот же шаблон, что и для себя
+  const meCard = $("#meCard", node);
+
+  try {
+    const p = await api(`/api/v1/profile/user/${encodeURIComponent(username)}`);
+    meCard.innerHTML = `
+      <div class="profile-header">
+        <img src="${p.avatar_url}" width="96" height="96"
+             style="image-rendering:pixelated;border-radius:50%;border:2px solid #2c3342"/>
+        <div class="profile-info">
+          <h2>@${escapeHtml(p.username)}</h2>
+          <div class="profile-stats">
+            <span><b>${p.quiz_count}</b> квизов</span>
+            <span><b>${p.followers}</b> подписчиков</span>
+            <span><b>${p.following}</b> подписки</span>
+          </div>
+          <p class="muted">${escapeHtml(p.bio || "О себе пока ничего нет")}</p>
+        </div>
+      </div>
+
+      <h3 style="margin-top:1rem;">Квизы пользователя</h3>
+      <div class="quiz-grid" id="userQuizGrid">
+        ${
+          (p.quizzes && p.quizzes.length)
+          ? p.quizzes.map(q => `
+              <button class="quiz-tile" data-id="${q.id}" title="${escapeHtml(q.title)}">
+                <div class="quiz-tile-title">${escapeHtml(q.title)}</div>
+              </button>
+            `).join("")
+          : '<div class="muted">Пока нет квизов</div>'
+        }
+      </div>
+    `;
+
+    const grid = $("#userQuizGrid", meCard);
+    if (grid) {
+      grid.querySelectorAll(".quiz-tile").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          openQuiz(id);
+        });
+      });
+    }
+  } catch (e) {
+    meCard.innerHTML = `<div class="error">Профиль не найден</div>`;
+  }
 
   setScreen(node);
 }
