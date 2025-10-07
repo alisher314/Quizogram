@@ -639,18 +639,27 @@ async function renderRandom() {
 }
 
 async function renderPublicProfile(username) {
-  const node = clone(tplProfile); // используем тот же шаблон, что и для себя
+  const node = clone(tplProfile);            // тот же шаблон, что и свой профиль
   const meCard = $("#meCard", node);
 
   try {
     const p = await api(`/api/v1/profile/user/${encodeURIComponent(username)}`);
+
+    // сразу вычислим начальную подпись кнопки
+    const needsBtn = !p.is_me;
+    const initialLabel = p.is_following ? "Отписаться" : "Подписаться";
+    const initialClass = p.is_following ? "follow-btn danger" : "follow-btn";
+
     meCard.innerHTML = `
       <div class="profile-header">
         <img src="${p.avatar_url}" width="96" height="96"
              style="image-rendering:pixelated;border-radius:50%;border:2px solid #2c3342"/>
         <div class="profile-info">
-          <h2>@${escapeHtml(p.username)}</h2>
-          <div class="profile-stats">
+          <h2>
+            @${escapeHtml(p.username)}
+            ${needsBtn ? `<button class="${initialClass}" id="followBtn">${initialLabel}</button>` : ""}
+          </h2>
+          <div class="profile-stats" id="publicStats">
             <span><b>${p.quiz_count}</b> квизов</span>
             <span><b>${p.followers}</b> подписчиков</span>
             <span><b>${p.following}</b> подписки</span>
@@ -673,6 +682,7 @@ async function renderPublicProfile(username) {
       </div>
     `;
 
+    // навесим обработчики на плитки квизов
     const grid = $("#userQuizGrid", meCard);
     if (grid) {
       grid.querySelectorAll(".quiz-tile").forEach(btn => {
@@ -682,9 +692,85 @@ async function renderPublicProfile(username) {
         });
       });
     }
+
+    // кнопка подписки
+    if (needsBtn) {
+      const btn = meCard.querySelector("#followBtn");
+      const statsEl = meCard.querySelector("#publicStats");
+
+      const updateBtnView = () => {
+        btn.textContent = p.is_following ? "Отписаться" : "Подписаться";
+        btn.className = p.is_following ? "follow-btn danger" : "follow-btn";
+      };
+
+      btn.addEventListener("click", async () => {
+        try {
+          btn.disabled = true;
+          if (p.is_following) {
+            await api(`/api/v1/follow/${encodeURIComponent(p.username)}`, { method: "DELETE" });
+            p.is_following = false;
+            p.followers = Math.max(0, (p.followers || 1) - 1);
+          } else {
+            await api(`/api/v1/follow/${encodeURIComponent(p.username)}`, { method: "POST" });
+            p.is_following = true;
+            p.followers = (p.followers || 0) + 1;
+          }
+          // обновим счётчики и кнопку
+          statsEl.innerHTML = `
+            <span><b>${p.quiz_count}</b> квизов</span>
+            <span><b>${p.followers}</b> подписчиков</span>
+            <span><b>${p.following}</b> подписки</span>
+          `;
+          updateBtnView();
+        } catch (e) {
+          console.error("[Follow] error:", e);
+          alert("Не удалось изменить подписку");
+        } finally {
+          btn.disabled = false;
+        }
+      });
+
+      // на всякий случай (если initClass не применился) обновим вид
+      updateBtnView();
+    }
   } catch (e) {
+    console.error("[PublicProfile] load error:", e);
     meCard.innerHTML = `<div class="error">Профиль не найден</div>`;
   }
 
   setScreen(node);
+}
+
+
+if (!p.is_me) {
+  const btn = meCard.querySelector("#followBtn");
+  const setView = () => {
+    btn.textContent = p.is_following ? "Отписаться" : "Подписаться";
+    btn.className = p.is_following ? "follow-btn danger" : "follow-btn";
+  };
+  setView();
+
+  btn.addEventListener("click", async () => {
+    try {
+      if (p.is_following) {
+        await api(`/api/v1/follow/${encodeURIComponent(p.username)}`, { method: "DELETE" });
+        p.is_following = false;
+        // локально уменьшим followers у цели
+        p.followers = Math.max(0, (p.followers || 1) - 1);
+      } else {
+        await api(`/api/v1/follow/${encodeURIComponent(p.username)}`, { method: "POST" });
+        p.is_following = true;
+        p.followers = (p.followers || 0) + 1;
+      }
+      // перерисуем счётчики и кнопку
+      meCard.querySelector(".profile-stats").innerHTML = `
+        <span><b>${p.quiz_count}</b> квизов</span>
+        <span><b>${p.followers}</b> подписчиков</span>
+        <span><b>${p.following}</b> подписки</span>
+      `;
+      setView();
+    } catch (e) {
+      alert("Не удалось изменить подписку");
+    }
+  });
 }

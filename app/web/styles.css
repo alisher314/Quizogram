@@ -345,3 +345,19 @@ textarea{min-height:90px;resize:vertical}
   background: #23283b;
   border-color: #39425a;
 }
+
+.follow-btn {
+  background: #2a5eea;
+  color: #fff;               /* важно: белый текст */
+  border: 1px solid #2a5eea;
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;           /* рука, чтобы было видно, что кликабельно */
+  font-size: 0.9rem;
+  line-height: 1;            /* чтобы текст не «обрезался» */
+}
+.follow-btn:hover { opacity: .9; }
+.follow-btn.danger {
+  background: #a33e3e;
+  border-color: #a33e3e;
+}

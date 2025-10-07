@@ -59,9 +59,8 @@ def get_my_profile(
         .count()
     )
 
-    # TODO: когда реализуем модель подписок (Follow), заменить заглушки
-    followers = 0
-    following = 0
+    followers = db.query(models.Follow).filter(models.Follow.following_id == current_user.id).count()
+    following = db.query(models.Follow).filter(models.Follow.follower_id == current_user.id).count()
 
     # Список моих квизов
     my_quizzes = (
@@ -166,8 +165,8 @@ def get_user_profile_public(
     prof = get_or_create_profile(db, user.id)
 
     quiz_count = db.query(models.Quiz).filter(models.Quiz.owner_id == user.id).count()
-    followers = 0  # TODO: replace after adding follow model
-    following = 0
+    followers = db.query(models.Follow).filter(models.Follow.following_id == user.id).count()
+    following = db.query(models.Follow).filter(models.Follow.follower_id == user.id).count()
 
     quizzes = (
         db.query(models.Quiz)
@@ -175,6 +174,13 @@ def get_user_profile_public(
         .order_by(models.Quiz.id.desc())
         .all()
     )
+
+    is_following = False
+    if current_user.id != user.id:
+        is_following = db.query(models.Follow).filter(
+            models.Follow.follower_id == current_user.id,
+            models.Follow.following_id == user.id
+        ).first() is not None
 
     return {
         "username": user.username,
@@ -188,4 +194,5 @@ def get_user_profile_public(
             for q in quizzes
         ],
         "is_me": (user.id == current_user.id),
+        "is_following": is_following,
     }

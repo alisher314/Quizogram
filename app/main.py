@@ -5,7 +5,7 @@ from pathlib import Path
 from . import models
 from .database import engine
 from .routers import auth, users, quizzes, attempts, social, profile
-
+from .routers import follow as follow_router
 
 BASE_DIR = Path(__file__).resolve().parent  # app/
 STATIC_DIR = BASE_DIR / "static"
@@ -29,6 +29,7 @@ app.include_router(quizzes.router)
 app.include_router(attempts.router)
 app.include_router(social.router)
 app.include_router(profile.router)
+app.include_router(follow_router.router)
 
 @app.get("/health", tags=["system"])
 def health():

@@ -67,13 +67,13 @@ class AttemptAnswer(Base):
 class Follow(Base):
     __tablename__ = "follows"
     id = Column(Integer, primary_key=True)
-    follower_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    following_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    follower_id = Column(Integer, ForeignKey("users.id"), nullable=False)   # кто подписывается
+    following_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # на кого
 
-    __table_args__ = (
-        UniqueConstraint("follower_id", "following_id", name="uix_follower_following"),
-    )
+    __table_args__ = (UniqueConstraint("follower_id", "following_id", name="uq_follow_pair"),)
+
+    follower = relationship("User", foreign_keys=[follower_id])
+    following = relationship("User", foreign_keys=[following_id])
 
 class Like(Base):
     __tablename__ = "likes"
@@ -101,3 +101,4 @@ class Profile(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     user = relationship("User", backref="profile")
+
