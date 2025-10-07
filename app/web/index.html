@@ -62,29 +62,49 @@
         <input name="title" placeholder="Название" required />
         <textarea name="description" placeholder="Описание"></textarea>
 
+        <!-- ВОПРОС 1 -->
         <details open class="qbox">
           <summary>Вопрос 1</summary>
           <input name="q0_text" placeholder="Текст вопроса" required />
-          <input name="q0_opt0" placeholder="Вариант 1" required />
-          <input name="q0_opt1" placeholder="Вариант 2" required />
-          <input name="q0_opt2" placeholder="Вариант 3"/>
-          <input name="q0_opt3" placeholder="Вариант 4"/>
-          <label class="inline">
-            Правильный индекс:
-            <input name="q0_correct" type="number" min="0" value="0" />
+
+          <label class="opt-row">
+            <input type="radio" name="q0_correct" value="0" checked />
+            <input name="q0_opt0" placeholder="Вариант 1" required />
+          </label>
+          <label class="opt-row">
+            <input type="radio" name="q0_correct" value="1" />
+            <input name="q0_opt1" placeholder="Вариант 2" required />
+          </label>
+          <label class="opt-row">
+            <input type="radio" name="q0_correct" value="2" />
+            <input name="q0_opt2" placeholder="Вариант 3" />
+          </label>
+          <label class="opt-row">
+            <input type="radio" name="q0_correct" value="3" />
+            <input name="q0_opt3" placeholder="Вариант 4" />
           </label>
         </details>
 
+        <!-- ВОПРОС 2 (необязательно) -->
         <details class="qbox">
           <summary>Вопрос 2 (необязательно)</summary>
-          <input name="q1_text" placeholder="Текст вопроса"/>
-          <input name="q1_opt0" placeholder="Вариант 1"/>
-          <input name="q1_opt1" placeholder="Вариант 2"/>
-          <input name="q1_opt2" placeholder="Вариант 3"/>
-          <input name="q1_opt3" placeholder="Вариант 4"/>
-          <label class="inline">
-            Правильный индекс:
-            <input name="q1_correct" type="number" min="0" value="0" />
+          <input name="q1_text" placeholder="Текст вопроса" />
+
+          <label class="opt-row">
+            <input type="radio" name="q1_correct" value="0" checked />
+            <input name="q1_opt0" placeholder="Вариант 1" />
+          </label>
+          <label class="opt-row">
+            <input type="radio" name="q1_correct" value="1" />
+            <input name="q1_opt1" placeholder="Вариант 2" />
+          </label>
+          <label class="opt-row">
+            <input type="radio" name="q1_correct" value="2" />
+            <input name="q1_opt2" placeholder="Вариант 3" />
+          </label>
+          <label class="opt-row">
+            <input type="radio" name="q1_correct" value="3" />
+            <input name="q1_opt3" placeholder="Вариант 4" />
           </label>
         </details>
 
@@ -92,6 +112,7 @@
       </form>
     </div>
   </template>
+
 
   <template id="tpl-profile">
     <div class="profile vstack gap">

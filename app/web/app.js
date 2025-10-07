@@ -325,33 +325,56 @@ async function renderCreate() {
   const node = clone(tplCreate);
   const form = $("#quizForm", node);
 
-  form.addEventListener("submit", async (e)=>{
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(form);
     const title = fd.get("title");
-    const description = fd.get("description");
+    const description = fd.get("description") || "";
 
     const qs = [];
-    for (let i=0;i<2;i++) {
-      const text = fd.get(`q${i}_text`);
+    for (let qi = 0; qi < 2; qi++) {
+      const text = (fd.get(`q${qi}_text`) || "").trim();
       if (!text) continue;
-      const options = [];
-      for (let j=0;j<4;j++) {
-        const t = fd.get(`q${i}_opt${j}`);
-        if (t) options.push({ text: String(t) });
+
+      // соберём до 4-х вариантов с исходными индексами
+      const rawOptions = [];
+      for (let oi = 0; oi < 4; oi++) {
+        const val = (fd.get(`q${qi}_opt${oi}`) || "").trim();
+        if (val) rawOptions.push({ text: val, origIndex: oi });
       }
-      const correct = parseInt(fd.get(`q${i}_correct`),10) || 0;
-      qs.push({ text: String(text), options, correct_option_index: correct });
+
+      if (rawOptions.length < 2) {
+        alert(`Вопрос ${qi + 1}: нужно минимум 2 варианта`);
+        return;
+      }
+
+      // выбранный радиобаттон (исходный индекс)
+      const selectedRaw = parseInt(fd.get(`q${qi}_correct`) ?? "0", 10);
+
+      // теперь нужно найти позицию выбранного среди НЕпустых вариантов
+      let correct = 0;
+      for (let k = 0; k < rawOptions.length; k++) {
+        if (rawOptions[k].origIndex === selectedRaw) {
+          correct = k;
+          break;
+        }
+      }
+
+      qs.push({
+        text,
+        options: rawOptions.map(o => ({ text: o.text })),
+        correct_option_index: correct,
+      });
     }
 
-    if (!qs.length || qs[0].options.length < 2) {
-      alert("Нужен минимум 1 вопрос и 2 варианта");
+    if (!qs.length) {
+      alert("Добавьте хотя бы один вопрос");
       return;
     }
 
     try {
-      const payload = { title: String(title), description: String(description || ""), questions: qs };
-      const created = await api("/api/v1/quizzes/", { method:"POST", data: payload });
+      const payload = { title: String(title), description: String(description), questions: qs };
+      const created = await api("/api/v1/quizzes/", { method: "POST", data: payload });
       alert(`Квиз создан: id=${created.id}`);
       form.reset();
       setActiveTab("home");
@@ -364,6 +387,7 @@ async function renderCreate() {
 
   setScreen(node);
 }
+
 
 // PROFILE
 async function renderProfile() {

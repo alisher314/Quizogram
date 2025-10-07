@@ -361,3 +361,19 @@ textarea{min-height:90px;resize:vertical}
   background: #a33e3e;
   border-color: #a33e3e;
 }
+
+/* Ряд варианта ответа: галочка + текст */
+.opt-row {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  padding: 6px 8px;
+  border: 1px solid #2c3342;
+  border-radius: 10px;
+  background: #1f2430;
+}
+.opt-row:hover { background: #23283b; }
+.opt-row input[type="radio"] { transform: scale(1.1); }
+
