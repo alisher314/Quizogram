@@ -89,3 +89,15 @@ class Like(Base):
     # не обязательно, но на будущее:
     user = relationship("User")
     quiz = relationship("Quiz")
+
+
+class Profile(Base):
+    __tablename__ = "profiles"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, index=True, nullable=False)
+    bio = Column(Text, nullable=True)
+    avatar_key = Column(String(100), nullable=False, default="8bit_default.png")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User", backref="profile")

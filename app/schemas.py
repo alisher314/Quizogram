@@ -105,3 +105,17 @@ class FeedItem(BaseModel):
 class QuizUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = None
+
+
+class ProfileOut(BaseModel):
+    user_id: int
+    bio: Optional[str] = None
+    avatar_url: str  # абсолютная ссылка на PNG
+
+class ProfileUpdate(BaseModel):
+    bio: Optional[str] = Field(None, max_length=1000)
+    avatar_key: Optional[str] = None  # имя файла из доступных (см. список)
+
+class AvatarOption(BaseModel):
+    key: str
+    url: str
